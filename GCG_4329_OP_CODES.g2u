@@ -1,0 +1,247 @@
+Program.Sub.ScreenSU.Start
+Gui.Form..Create
+Gui.Form..Caption("OpCode Restrictions")
+Gui.Form..Size(4005,4860)
+Gui.Form..MinX(0)
+Gui.Form..MinY(0)
+Gui.Form..Position(0,0)
+Gui.Form..BackColor(-2147483633)
+Gui.Form..MousePointer(0)
+Gui.Form..Event(UnLoad,Form_UnLoad)
+Gui.Form..FontSize(8)
+Gui.Form.GsGrid.Create(GsGridControl)
+Gui.Form.GsGrid.Size(3885,3525)
+Gui.Form.GsGrid.Position(15,555)
+Gui.Form.GsGrid.Event(RowClick,GsGrid_RowClick)
+Gui.Form.txtOpCode.Create(TextBox,"",True,1830,300,0,45,135,False,0,"Arial",8,-2147483643,1)
+Gui.Form.txtOpCode.Locked(True)
+Gui.Form.cmdBrsr.Create(Button)
+Gui.Form.cmdBrsr.Size(540,375)
+Gui.Form.cmdBrsr.Position(1965,105)
+Gui.Form.cmdBrsr.Caption("^")
+Gui.Form.cmdBrsr.Event(Click,cmdBrsr_Click)
+Gui.Form.cmdAdd.Create(Button)
+Gui.Form.cmdAdd.Size(855,375)
+Gui.Form.cmdAdd.Position(2715,105)
+Gui.Form.cmdAdd.Caption("Add")
+Gui.Form.cmdAdd.Event(Click,cmdAdd_Click)
+Gui.Form.cmdRemove.Create(Button)
+Gui.Form.cmdRemove.Size(855,375)
+Gui.Form.cmdRemove.Position(105,4140)
+Gui.Form.cmdRemove.Caption("Remove")
+Gui.Form.cmdRemove.Event(Click,cmdRemove_Click)
+Gui.Form.cmdSave.Create(Button)
+Gui.Form.cmdSave.Size(855,375)
+Gui.Form.cmdSave.Position(2835,4125)
+Gui.Form.cmdSave.Caption("Save")
+Gui.Form.cmdSave.Event(Click,cmdSave_Click)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+V.Global.iRow.Declare(Long)
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+v.Local.bMember.Declare(Boolean)
+
+'Call user group 'OPS'
+F.ODBC.Connection!con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+F.Global.Security.IsInGroup(v.Caller.User, "OPS", v.Local.bMember)
+Function.Intrinsic.Control.If(V.Local.bMember, =, TRUE)
+	Function.Intrinsic.Control.CallSub(show_gui)
+Function.Intrinsic.Control.Else
+	F.Intrinsic.UI.Msgbox("User Group does not have ability to maintain OP Codes") 
+'	Function.Intrinsic.Control.CallSub(form_unload)
+Function.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4329_OP_CODES.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	Function.Intrinsic.Control.CallSub(form_unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.Main.End
+
+Program.Sub.cmdBrsr_Click.Start
+F.Intrinsic.Control.SetErrorHandler("cmdBrsr_Click_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+Variable.Local.sRet.Declare(string)
+Variable.Local.sTitles.Declare(string)
+Variable.Local.iWidths.Declare(long)
+
+Function.Intrinsic.String.Split("OPERATION","*!*",variable.local.sTitles)
+Function.Intrinsic.String.Split("1000","*!*",variable.local.iWidths)
+Function.Intrinsic.UI.Browser("Select an Op Code","con","Select Operation From OP_CODES Where LMO = 'L' ",variable.local.sTitles,variable.local.iWidths,Variable.Local.sRet)
+Function.Intrinsic.Control.If(Variable.Local.sRet,<>,"***CANCEL***")
+	Function.Intrinsic.String.Split(Variable.Local.sRet,"*!*",Variable.Local.sRet)
+	Gui.Form.txtOpCode.Text(Variable.Local.sRet(0))
+Function.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("cmdBrsr_Click_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4329_OP_CODES.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	Function.Intrinsic.Control.CallSub(form_unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.cmdBrsr_Click.End
+
+Program.Sub.Form_UnLoad.Start
+F.Intrinsic.Control.SetErrorHandler("Form_UnLoad_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+V.Local.iRet.Declare(Long)
+Function.Intrinsic.UI.MsgBox ("Save the Table?", "Save?", 4, V.Local.iRet)
+Function.Intrinsic.Control.If(V.Local.iRet, =, 6)
+	F.Data.DataTable.SaveToDB("OP","con", "GCG_4329_OP_CODES", "OP_CODE")
+Function.Intrinsic.Control.EndIf
+GUI.Form..Visible(False)
+F.ODBC.Connection!con.Close
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Form_UnLoad_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4329_OP_CODES.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	Function.Intrinsic.Control.End
+
+Function.Intrinsic.Control.EndIf
+Program.Sub.Form_UnLoad.End
+
+Program.Sub.cmdAdd_Click.Start
+F.Intrinsic.Control.SetErrorHandler("cmdAdd_Click_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+V.Local..BulkDeclareString(sFilter, sRet)
+'check the opCode does not already exist, create a view from table
+F.Intrinsic.String.Build("OP_CODE = '{0}'", V.Screen.Form!txtOpCode.Text, V.Local.sFilter)
+Function.Data.DataView.Create("OP", "OP_V", 22, V.Local.sFilter, "")
+Function.Data.DataView.ToString("OP", "OP_V", "", "", V.Local.sRet)
+F.Data.DataView.Close("OP", "OP_V")
+Function.Intrinsic.Control.If(V.Local.sRet, <>, "")
+	F.Intrinsic.UI.Msgbox("This Op Code already exists")
+	Function.Intrinsic.Control.ExitSub
+Function.Intrinsic.Control.EndIf
+
+Function.Intrinsic.Control.If(V.Screen.Form!txtOpCode.Text, <>, "")
+	Function.Data.DataTable.AddRow("OP", "OP_CODE", V.Screen.Form!txtOpCode.Text)
+Function.Intrinsic.Control.Else
+	F.Intrinsic.UI.Msgbox("Select an Op Code")
+Function.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("cmdAdd_Click_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4329_OP_CODES.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	Function.Intrinsic.Control.CallSub(form_unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.cmdAdd_Click.End
+
+Program.Sub.cmdRemove_Click.Start
+F.Intrinsic.Control.SetErrorHandler("cmdRemove_Click_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+Function.Intrinsic.Control.If(V.Global.iRow, <>, -1)
+	Function.Data.DataTable.DeleteRow("OP", V.Global.iRow)
+	V.Global.iRow.Set(-1)
+Function.Intrinsic.Control.Else
+	F.Intrinsic.UI.Msgbox("Choose a Row to Remove")
+Function.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("cmdRemove_Click_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4329_OP_CODES.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	Function.Intrinsic.Control.CallSub(form_unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.cmdRemove_Click.End
+
+Program.Sub.cmdSave_Click.Start
+F.Intrinsic.Control.SetErrorHandler("cmdSave_Click_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+F.Data.DataTable.SaveToDB("OP","con", "GCG_4329_OP_CODES", "OP_CODE")
+Function.Intrinsic.Control.CallSub(show_gui)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("cmdSave_Click_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4329_OP_CODES.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	Function.Intrinsic.Control.CallSub(form_unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.cmdSave_Click.End
+
+Program.Sub.Show_GUI.Start
+F.Intrinsic.Control.SetErrorHandler("Show_GUI_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+Function.Intrinsic.Control.If( Variable.DataTable.OP.Exists, = , TRUE)
+	F.Data.DataTable.Close("OP")
+Function.Intrinsic.Control.EndIf
+F.Data.DataTable.CreateFromSQL("OP", "con","Select OP_CODE From GCG_4329_OP_CODES", TRUE)
+Gui.Form.GsGrid.AddGridViewFromDatatable( "Grid", "OP")
+GUI.Form.GsGrid.MainView("Grid")
+GUI.Form..Show
+
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Show_GUI_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4329_OP_CODES.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	Function.Intrinsic.Control.CallSub(form_unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.Show_GUI.End
+
+Program.Sub.GsGrid_RowClick.Start
+F.Intrinsic.Control.SetErrorHandler("Show_GUI_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+V.Global.iRow.Set(Variable.Args.RowIndex)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Show_GUI_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4329_OP_CODES.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	Function.Intrinsic.Control.CallSub(form_unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.GsGrid_RowClick.End
+
+Program.Sub.Comments.Start
+${$0$}$$}$DH1$}$1/17/2017 2:56:28 PM$}$False
+${$3$}$0$}$$}$0$}$-1$}$$}$12:00:00 AM$}$' ShippingDashPickList.rpt report required
+' To enable ship, add GS User to   SHIP  group
+Program.Sub.Comments.End
