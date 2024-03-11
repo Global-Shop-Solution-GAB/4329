@@ -1,0 +1,234 @@
+Program.Sub.ScreenSU.Start
+Gui.FormPR..Create
+Gui.FormPR..Caption("Message")
+Gui.FormPR..Size(7110,2310)
+Gui.FormPR..MinX(0)
+Gui.FormPR..MinY(0)
+Gui.FormPR..Position(0,0)
+Gui.FormPR..BackColor(-2147483633)
+Gui.FormPR..MousePointer(0)
+Gui.FormPR..Event(UnLoad,UnloadPR)
+Gui.FormPR.lbl1.Create(Label,"Permissions Required",True,6990,1320,0,60,165,True,0,"Arial",30,-2147483633,0)
+Gui.FormPR.lbl1.FontStyle(True,False,False,False,False)
+Gui.FormClose..Create
+Gui.FormClose..Caption("Message")
+Gui.FormClose..Size(7890,2685)
+Gui.FormClose..MinX(0)
+Gui.FormClose..MinY(0)
+Gui.FormClose..Position(0,0)
+Gui.FormClose..BackColor(-2147483633)
+Gui.FormClose..MousePointer(0)
+Gui.FormClose..Event(UnLoad,UnloadClose)
+Gui.FormClose.lbl1.Create(Label,"Previous Seq Not Closed",True,7590,1125,0,135,450,True,0,"Arial",30,-2147483633,0)
+Gui.FormClose.lbl1.FontStyle(True,False,False,False,False)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+V.Global.sLoggingText.Declare(String)
+V.Global.sLoggingFilePath.Declare(String)
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+V.Local.sDate.Declare(String)
+V.Local.bExists.Declare(Boolean)
+
+F.Intrinsic.String.Format(V.Ambient.Now,"MMDDYY",V.Local.sDate)
+F.Intrinsic.String.Build("{0}\{1}OPCodePrevention{2}.txt",V.Caller.TempDir,V.Caller.CompanyCode,V.Local.sDate,V.Global.sLoggingFilePath)
+
+F.Intrinsic.String.Build("{0}: Program Started, Hook Number - {1}",V.Ambient.Now,V.Caller.Hook,V.Global.sLoggingText)
+
+F.Intrinsic.File.Exists(V.Global.sLoggingFilePath,V.Local.bExists)
+'Adding Logging
+F.Intrinsic.Control.If(V.Local.bExists)
+	F.Intrinsic.File.Append2FileNewLine(V.Global.sLoggingFilePath,V.Global.sLoggingText)
+F.Intrinsic.Control.Else
+	F.Intrinsic.File.String2File(V.Global.sLoggingFilePath,V.Global.sLoggingText)
+F.Intrinsic.Control.EndIf
+
+F.ODBC.Connection!con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass, 100000000)
+'check for the calling hook
+Function.Intrinsic.Control.If(V.Caller.Hook, =, 15934, "OR",V.Caller.Hook,=,15754)
+	Function.Intrinsic.Control.CallSub(checklogin)
+	
+Function.Intrinsic.Control.ElseIf(V.Caller.Hook, =, 15880)
+	'only if they are trying to close the job
+	Function.Intrinsic.Control.If(V.Passed.000003, =, "Y")
+		Function.Intrinsic.Control.CallSub(closefromwc)
+	Function.Intrinsic.Control.EndIf
+
+Function.Intrinsic.Control.ElseIf(V.Caller.Hook, =, 15915)
+	'only if they are trying to close the job
+	Function.Intrinsic.Control.If(V.Passed.000003, =, "Y")
+		Function.Intrinsic.Control.CallSub(closefromwc)
+	Function.Intrinsic.Control.EndIf
+	
+Function.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.CallSub(Unload)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4329_Prevention.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Ambient.NewLine,"Clock-In Stopped",V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	V.Passed.777777.Set(1)
+	Function.Intrinsic.Control.CallSub(unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.Main.End
+
+Program.Sub.Unload.Start
+F.Intrinsic.Control.SetErrorHandler("Unload_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+F.Intrinsic.String.Build("{0}: Program Ending",V.Ambient.Now,V.Global.sLoggingText)
+F.Intrinsic.File.Append2FileNewLine(V.Global.sLoggingFilePath,V.Global.sLoggingText)
+F.ODBC.Connection!con.Close
+Function.Intrinsic.Control.End
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Unload_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4329_Prevention.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	Function.Intrinsic.Control.End
+
+Function.Intrinsic.Control.EndIf
+Program.Sub.Unload.End
+
+Program.Sub.CheckLogIn.Start
+F.Intrinsic.Control.SetErrorHandler("CheckLogIn_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+V.Local..BulkDeclareString(sJob, sSuffix, sSeq, sEmp, sUser, ssql, sRet)
+V.Local.bMember.Declare(Boolean, FALSE)
+V.Local.iC.Declare(Long)
+
+V.Local.sJob.Set(V.Passed.009990)
+V.Local.sSuffix.Set(V.Passed.009991)
+V.Local.sSeq.Set(V.Passed.009992)
+V.Local.sEmp.Set(V.Passed.009993)
+
+F.Intrinsic.String.Build("{0}: Checking Login Credentials For - Job({1}) Suffix({2}) Seq({3}) Employee({4})",V.Ambient.Now,V.Passed.009990,V.Passed.009991,V.Passed.009992,V.Passed.009993,V.Global.sLoggingText)
+F.Intrinsic.File.Append2FileNewLine(V.Global.sLoggingFilePath,V.Global.sLoggingText)
+
+F.Global.Security.GetUserFromEmpNo(V.Local.sEmp, V.Local.sUser)
+F.Global.Security.IsInGroup(V.Local.sUser, "OPS", V.Local.bMember)
+
+'check all above flagged seq are closed
+F.Intrinsic.String.Build("Select Distinct GCG_4329_OP_CODES.OP_CODE From GCG_4329_OP_CODES Left Join JOB_OPERATIONS On GCG_4329_OP_CODES.OP_CODE = JOB_OPERATIONS.OPERATION Where JOB_OPERATIONS.JOB = '{0}' And JOB_OPERATIONS.SUFFIX = '{1}'And JOB_OPERATIONS.SEQ < '{2}' And JOB_OPERATIONS.FLAG_CLOSED <> 'Y' Order By JOB_OPERATIONS.SEQ ",V.Local.sJob, V.Local.sSuffix,V.Local.sSeq ,V.Local.ssql)
+
+F.Intrinsic.String.Build("{0}: Query Executed - {1}",V.Ambient.Now,V.Local.sSQL,V.Global.sLoggingText)
+F.Intrinsic.File.Append2FileNewLine(V.Global.sLoggingFilePath,V.Global.sLoggingText)
+
+F.Data.DataTable.CreateFromSQL("OPS", "con", v.Local.ssql)
+Function.Intrinsic.Control.For(V.Local.iC,0,Variable.DataTable.OPS.RowCount--, 1)
+		GUI.FormClose..Show
+		'F.Intrinsic.UI.Msgbox("Previous Seq Not Closed")
+		Gui.FormClose..WaitForDismiss
+		V.Passed.777777.Set(1)
+		F.Data.DataTable.Close("OPS")
+		F.Intrinsic.Control.Callsub(Unload)
+
+F.Intrinsic.Control.Next(V.Local.iC)
+F.Data.DataTable.Close("OPS")
+
+
+'check user has permission to clock into job
+F.Intrinsic.String.Build("Select Distinct GCG_4329_OP_CODES.OP_CODE From GCG_4329_OP_CODES Left Join JOB_OPERATIONS On GCG_4329_OP_CODES.OP_CODE = JOB_OPERATIONS.OPERATION Where JOB_OPERATIONS.JOB = '{0}' And JOB_OPERATIONS.SUFFIX = '{1}'And JOB_OPERATIONS.SEQ = '{2}' And JOB_OPERATIONS.FLAG_CLOSED <> 'Y' Order By JOB_OPERATIONS.SEQ ",V.Local.sJob, V.Local.sSuffix,V.Local.sSeq ,V.Local.ssql)
+
+F.Intrinsic.String.Build("{0}: Query Executed - {1}",V.Ambient.Now,V.Local.sSQL,V.Global.sLoggingText)
+F.Intrinsic.File.Append2FileNewLine(V.Global.sLoggingFilePath,V.Global.sLoggingText)
+
+F.Data.DataTable.CreateFromSQL("OPS", "con", v.Local.ssql)
+Function.Intrinsic.Control.For(V.Local.iC,0,Variable.DataTable.OPS.RowCount--, 1)
+	F.Intrinsic.Control.If(V.Local.bMember,=,False)
+		Gui.FormPR..Show
+		'F.Intrinsic.UI.Msgbox("Permissions Required")
+		Gui.FormPR..WaitForDismiss
+		V.Passed.777777.Set(1)
+		F.Data.DataTable.Close("OPS")
+		F.Intrinsic.Control.Callsub(Unload)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Next(V.Local.iC)
+F.Data.DataTable.Close("OPS")
+
+Function.Intrinsic.Control.CallSub(unload)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("CheckLogIn_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4329_Prevention.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Ambient.NewLine,"Clock-In Stopped",V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	V.Passed.777777.Set(1)
+	Function.Intrinsic.Control.CallSub(unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.CheckLogIn.End
+
+Program.Sub.CloseFromWC.Start
+F.Intrinsic.Control.SetErrorHandler("CloseFromWC_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+V.Local..BulkDeclareString(sJob, sSuffix, sSeq, sEmp, sUser, ssql)
+V.Local.bMember.Declare(Boolean, FALSE)
+V.Local.iC.Declare(Long)
+V.Local.sJob.Set(V.Passed.009990)
+V.Local.sSuffix.Set(V.Passed.009991)
+V.Local.sSeq.Set(V.Passed.009992)
+V.Local.sEmp.Set(V.Passed.009993)
+
+F.Global.Security.GetUserFromEmpNo(V.Local.sEmp, V.Local.sUser)
+F.Global.Security.IsInGroup(V.Local.sUser, "OPS", V.Local.bMember)
+F.Intrinsic.String.Build("Select Distinct GCG_4329_OP_CODES.OP_CODE From GCG_4329_OP_CODES Left Join JOB_OPERATIONS On GCG_4329_OP_CODES.OP_CODE = JOB_OPERATIONS.OPERATION Where JOB_OPERATIONS.JOB = '{0}' And JOB_OPERATIONS.SUFFIX = '{1}'And JOB_OPERATIONS.SEQ = '{2}' And JOB_OPERATIONS.FLAG_CLOSED <> 'Y' Order By JOB_OPERATIONS.SEQ ",V.Local.sJob, V.Local.sSuffix,V.Local.sSeq ,V.Local.ssql)
+
+F.Intrinsic.String.Build("{0}: Query Executed - {1}",V.Ambient.Now,V.Local.sSQL,V.Global.sLoggingText)
+F.Intrinsic.File.Append2FileNewLine(V.Global.sLoggingFilePath,V.Global.sLoggingText)
+
+F.Data.DataTable.CreateFromSQL("OPS", "con", v.Local.ssql)
+
+Function.Intrinsic.Control.For(V.Local.iC,0,Variable.DataTable.OPS.RowCount--, 1)
+	Function.Intrinsic.Control.If(V.Local.bMember, =, FALSE)
+		F.Intrinsic.UI.Msgbox("Not Allowed to Close Job")
+		V.Passed.777777.Set(1)
+		F.Data.DataTable.Close("OPS")
+		F.Intrinsic.Control.End
+
+	Function.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Next(V.Local.iC)
+F.Data.DataTable.Close("OPS")
+Function.Intrinsic.Control.CallSub(unload)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("CloseFromWC_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4329_Prevention.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Ambient.NewLine,"Clock-In Stopped",V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	V.Passed.777777.Set(1)
+	Function.Intrinsic.Control.CallSub(unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.CloseFromWC.End
+
+Program.Sub.UnloadClose.Start
+GUI.FormClose..Visible(False)
+Program.Sub.UnloadClose.End
+
+Program.Sub.UnloadPR.Start
+GUI.FormPR..Visible(False)
+Program.Sub.UnloadPR.End
+
+Program.Sub.Comments.Start
+${$0$}$$}$DH1$}$1/18/2017 10:38:08 AM$}$False
+Program.Sub.Comments.End
